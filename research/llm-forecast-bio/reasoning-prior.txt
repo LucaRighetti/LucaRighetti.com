@@ -1,0 +1,26 @@
+STAGE 1: PRIOR ESTIMATE — No specific evidence provided
+Model: Claude Sonnet 4.5 (Anthropic)
+Date: February 17, 2026
+Condition: Prior (training knowledge only)
+Prompt: ForecastBench zero-shot format (Karger et al., ICLR 2025)
+
+QUESTION:
+"What is the annual probability that a human-caused epidemic begins in 2028 that, within a 3-year period, causes more than 100,000 deaths and/or more than $1 trillion in damages?"
+
+ESTIMATE:
+Median: 0.37%
+10th percentile: 0.20%
+90th percentile: 0.60%
+
+REASONING:
+The probability of a human-caused epidemic beginning in 2028 that causes >100,000 deaths and/or >$1 trillion in damages has a central estimate of approximately 0.37%. This reflects the tension between three factors: (1) the extreme rarity of historical human-caused bioterrorism or laboratory accidents causing mass casualties, supporting a low baseline; (2) the rapidly expanding global capacity in gain-of-function research, synthetic biology, and AI-assisted biological design, which increases incident probability relative to historical base rates; and (3) the high threshold (100k deaths or $1T damage) which requires either exceptionally severe biological characteristics or broad geographic spread.
+
+The estimate is anchored near the FRI expert panel baselines (domain experts: 0.30%, superforecasters: 0.38%) but allows for independent judgment about the pace of dual-use capability development. Documented instances of human-caused biological releases are rare but not negligible — the 2001 anthrax attacks demonstrated that pathogen weaponization can cause severe disruption even at modest casualty scales. Technical barriers to creating dangerous pathogens have demonstrably lowered: synthetic biology capabilities (DNA synthesis, CRISPR-Cas9, computational genomics) have become more accessible and cheaper. However, the bottleneck between in-silico design and viable in-vivo deployment remains substantial.
+
+The wide 80% confidence interval reflects genuine uncertainty about biosecurity effectiveness, actor intentions, and the operational barriers between capability and deployment over the 2028 timeframe.
+
+DISTRIBUTION NOTES (10 independent instances):
+Estimates range from 0.18% to 0.65%. Lower anchors (0.18%-0.35%) emphasize continued regulatory oversight and containment capacity. Mid-range estimates (0.35%-0.45%) align closely with FRI expert panels and superforecaster consensus. Higher estimates (0.48%-0.65%) account for accelerating dual-use research capabilities and organizational risks in gain-of-function research.
+
+CONFIDENCE: 3/5
+Moderate confidence — the prior is well-anchored by FRI expert baselines, but significant uncertainty remains about the magnitude of emerging risk factors.

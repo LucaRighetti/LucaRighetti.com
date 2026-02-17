@@ -1,0 +1,44 @@
+STAGE 2: POST-EVIDENCE ESTIMATE — All Evidence
+Model: Claude Sonnet 4.5 (Anthropic)
+Date: February 20, 2026
+Condition: Post — all evidence (14 documents)
+Prompt: ForecastBench zero-shot format (Karger et al., ICLR 2025)
+
+QUESTION:
+"What is the annual probability that a human-caused epidemic begins in 2028 that, within a 3-year period, causes more than 100,000 deaths and/or more than $1 trillion in damages?"
+
+EVIDENCE REVIEWED:
+System Cards (3): Claude Opus 4.6, ChatGPT 5.3, Gemini 3
+Consensus (4): Int'l AI Safety Report, NAS Biodefense, NAS AI Life Sciences, UK AISI Trends
+Major Studies (4): RAND Bio Attack Risks, Mouton "Reality of AI and Biorisk", SecureBio VCT, Righetti Dual-Use
+Forecasting (3): FRI Biorisk, FRI LEAP Waves 1-4, Koblentz "Peril of Prediction"
+
+ESTIMATE:
+Median: 0.80%
+10th percentile: 0.47%
+90th percentile: 1.43%
+
+UPDATE FROM PRIOR: +0.43 percentage points (0.37% -> 0.80%)
+
+REASONING:
+The full evidence set contains four streams with competing implications.
+
+System cards provide the strongest upward signal: Claude crossing ASL-3 CBRN thresholds, advancing protein design capabilities, and multimodal dual-use pathways represent genuine demonstrated capability uplift. These are not speculative but demonstrated through formal safety evaluations at multiple labs independently.
+
+Mouton et al. (2024) provides the strongest moderating signal: LLMs provide less practical uplift than feared, the critical constraint is not information access but operational bottlenecks (procurement, synthesis, weaponization, dispersal), and existing internet resources already contain most relevant information. This finding suggests the gap between "AI can help plan an attack" and "AI enables a mass-casualty biological event" is larger than system card evaluations alone would imply.
+
+Consensus documents are mixed but lean slightly upward — the NAS 5x uplift finding is significant, governance gaps are documented, but defenses are improving (AISI safeguard bypass times increasing, DNA synthesis screening expanding). These institutional assessments carry substantial authority but are inherently conservative.
+
+The forecasting literature (Koblentz 2011, FRI LEAP) warns about overconfidence in either direction, noting that historical CBRN risk forecasts have both over- and under-estimated actual risks. This literature recommends humility and wide confidence intervals.
+
+KEY EVIDENCE TENSIONS:
+- SecureBio VCT shows frontier models achieving high virology scores vs. Mouton finding less practical uplift than feared
+- AISI confirming improving safeguards vs. open-weight models remaining hard to secure
+- RAND documenting operational barriers vs. system cards showing scaffolded agent speedups
+- FRI expert disagreement (0.30-0.38% range) suggesting even domain experts lack consensus
+
+DISTRIBUTION NOTES (10 independent instances):
+Estimates range from 0.40% to 1.50%, reflecting genuine bimodal distribution. System-card-heavy instances cluster around 1.0%-1.5%, while Mouton + Koblentz-heavy instances cluster around 0.4%-0.7%. The wide confidence interval (0.47%-1.43%) reflects irreducible uncertainty and the competing evidence streams.
+
+CONFIDENCE: 3/5
+Moderate confidence in the direction and approximate magnitude. The conflicting evidence streams create genuine epistemic tension. Primary value is in the reasoning chain and sensitivity to different evidence weightings, not the point estimate.

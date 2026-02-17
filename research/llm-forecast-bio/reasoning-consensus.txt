@@ -1,0 +1,32 @@
+STAGE 2: POST-EVIDENCE ESTIMATE — Consensus Documents
+Model: Claude Sonnet 4.5 (Anthropic)
+Date: February 19, 2026
+Condition: Post — consensus (4 documents)
+Prompt: ForecastBench zero-shot format (Karger et al., ICLR 2025)
+
+QUESTION:
+"What is the annual probability that a human-caused epidemic begins in 2028 that, within a 3-year period, causes more than 100,000 deaths and/or more than $1 trillion in damages?"
+
+EVIDENCE REVIEWED:
+1. International Scientific Report on the Safety of Advanced AI (Bengio et al., 2025) — AI could lower barriers to bioweapon development; governance gaps identified; uncertainty about pace of capability development.
+2. Biodefense in the Age of Synthetic Biology (National Academies, 2018) — Most concerning synthetic biology capabilities still developing; biosurveillance gaps exist; recommended updating biodefense frameworks.
+3. The Age of AI in the Life Sciences (National Academies, 2025) — AI provides ~5x uplift for non-experts in producing viable experimental protocols; significant beneficial applications alongside dual-use concerns.
+4. UK AI Security Institute Frontier AI Trends Report (Dec 2025) — Safeguard bypass times increasing (harder to jailbreak frontier models); open-weight models remain hard to secure; biology capabilities improving across generations.
+
+ESTIMATE:
+Median: 0.38%
+10th percentile: 0.33%
+90th percentile: 0.46%
+
+UPDATE FROM PRIOR: +0.01 percentage points (0.37% -> 0.38%)
+
+REASONING:
+The consensus documents produce a very modest upward update from the prior. The 5x AI uplift for non-expert protocol generation (NAS 2025) is the single most significant finding, as it addresses a historical barrier — specialized knowledge requirements — that previously constrained the pool of potential actors. The Bengio et al. (2025) report's identification of governance gaps adds institutional weight to the concern. Open-weight model control challenges persist despite improving frontier model safeguards (AISI 2025), meaning that even as commercial API models become harder to misuse, open-source alternatives remain relatively unconstrained.
+
+However, the update is constrained by several offsetting factors: the 2-year timeline to 2028 is tight for full weaponization pathways; institutional consensus documents are measured and explicitly acknowledge existing defenses; the 5x uplift applies to "viable experimental protocols," not the complete chain from design through synthesis, weaponization, dispersal, and evasion of detection. The NAS (2018) assessment characterized many threatening synthetic biology capabilities as still years away, and biosurveillance networks have improved significantly since COVID-19. The AISI finding that safeguard bypass times are increasing is a partially offsetting signal — frontier model safety is genuinely improving.
+
+DISTRIBUTION NOTES (10 independent instances):
+Estimates cluster tightly around 0.33%-0.46%, reflecting the moderate nature of this update. Consensus evidence is authoritative but measured, and does not produce the dramatic capability signals that system cards provide. The narrow confidence interval reflects genuine agreement across instances about the limited magnitude of this update.
+
+CONFIDENCE: 3/5
+Moderate confidence — consensus documents are authoritative and measured, but the translation from AI capability to actual mass-casualty risk remains deeply uncertain.

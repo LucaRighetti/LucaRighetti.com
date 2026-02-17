@@ -1,0 +1,31 @@
+STAGE 2: POST-EVIDENCE ESTIMATE — System Cards
+Model: Claude Sonnet 4.5 (Anthropic)
+Date: February 18, 2026
+Condition: Post — system cards (3 documents)
+Prompt: ForecastBench zero-shot format (Karger et al., ICLR 2025)
+
+QUESTION:
+"What is the annual probability that a human-caused epidemic begins in 2028 that, within a 3-year period, causes more than 100,000 deaths and/or more than $1 trillion in damages?"
+
+EVIDENCE REVIEWED:
+1. Claude Opus 4.6 System Card (Anthropic, Feb 2026) — Claude crossed ASL-3 thresholds on CBRN evaluations; scaffolded agents achieved significant speedups on multi-step biological research tasks; jailbreak research shows mitigations can be partially bypassed.
+2. ChatGPT 5.3 System Card (OpenAI, Jan 2026) — "Medium" biological risk designation; advancing protein structure prediction and cross-domain synthesis capabilities.
+3. Gemini 3 System Card (Google DeepMind, Feb 2026) — Bio-agent benchmarks show increasing capability; multimodal dual-use pathways; safety filter effectiveness varies by language and framing.
+
+ESTIMATE:
+Median: 0.79%
+10th percentile: 0.55%
+90th percentile: 1.12%
+
+UPDATE FROM PRIOR: +0.42 percentage points (0.37% -> 0.79%)
+
+REASONING:
+All three system cards document genuine advancement in biological reasoning, synthesis, and dual-use assistance — Claude crossing ASL-3 thresholds, ChatGPT 5.3's cross-domain synthesis capabilities, and Gemini 3's multimodal pathways are non-trivial convergent signals. The simultaneous crossing of safety-relevant thresholds across multiple labs strengthens the signal beyond what any single system card would warrant. Red-team evaluations found that scaffolded agents using Claude achieved significant speedups on multi-step biological research tasks, suggesting that the combination of planning + retrieval + execution creates a qualitatively different capability than single-turn assistance.
+
+However, the update is constrained by recognition that capability does not equal deployment, which does not equal misuse, which does not equal containment failure leading to mass casualties. System cards also document active safety mitigations (usage policies, monitoring, safety filters). The 2028 timeframe is relatively near-term (2 years), limiting the runway for capability diffusion to dangerous actor pools. The "medium" risk designation from OpenAI and varying safety filter effectiveness from Google suggest that current-generation models sit in an ambiguous zone — meaningfully capable but not yet enabling unassisted mass-casualty biological weapon development.
+
+DISTRIBUTION NOTES (10 independent instances):
+Estimates range from 0.52% to 1.20%. Lower estimates (0.52%-0.65%) emphasize operational barriers and the gap between AI assistance and actual weaponization. Higher estimates (0.95%-1.20%) emphasize the convergence of capability signals across independent labs and abbreviated timelines for capability diffusion.
+
+CONFIDENCE: 3/5
+Moderate confidence in direction of update (upward), uncertain about magnitude. System cards document capability but not operational deployment risk.

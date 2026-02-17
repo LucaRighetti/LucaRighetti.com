@@ -1,0 +1,929 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>What Do LLMs Think About LLM Risk? Biology Edition</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <style>
+        :root {
+            --bg: #0f1117; --surface: #1a1d27; --surface2: #242836;
+            --border: #2e3345; --text: #e2e4ea; --text-muted: #8b8fa3;
+            --accent: #6c8cff; --accent2: #ff6c8c; --accent3: #6cffa0; --warning: #ffb86c;
+            --tag-syscards: #6c8cff; --tag-consensus: #6cffa0; --tag-studies: #ff6c8c; --tag-forecast: #ffb86c;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; }
+        .container { max-width: 1100px; margin: 0 auto; padding: 2rem 1.5rem; }
+
+        .disclaimer-banner {
+            background: linear-gradient(135deg, rgba(255,108,140,0.10), rgba(255,184,108,0.10));
+            border: 1px solid rgba(255,108,140,0.30); border-radius: 10px;
+            padding: 0.7rem 1.25rem; margin-bottom: 1.5rem;
+            text-align: center; color: var(--accent2); font-weight: 600; font-size: 0.9rem;
+        }
+
+        header { text-align: center; margin-bottom: 2rem; padding-bottom: 1.5rem; border-bottom: 1px solid var(--border); }
+        header h1 { font-size: 1.75rem; font-weight: 700; margin-bottom: 0.5rem; background: linear-gradient(135deg, var(--accent), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        header p { color: var(--text-muted); font-size: 0.95rem; max-width: 700px; margin: 0 auto; }
+
+        .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; margin-bottom: 2rem; }
+        .card h2 { font-size: 1.1rem; font-weight: 600; margin-bottom: 0.75rem; }
+        .card p, .card li { color: var(--text-muted); font-size: 0.88rem; margin-bottom: 0.5rem; line-height: 1.6; }
+        .card h3 { font-size: 0.95rem; font-weight: 600; margin-top: 1rem; margin-bottom: 0.4rem; color: var(--text); }
+        .card ol, .card ul { padding-left: 1.25rem; margin-bottom: 0.75rem; }
+        .card ol li, .card ul li { margin-bottom: 0.35rem; }
+
+        .collapsible-header { cursor: pointer; display: flex; align-items: center; justify-content: space-between; user-select: none; }
+        .collapsible-header .chevron { transition: transform 0.2s; font-size: 0.8rem; color: var(--text-muted); }
+        .collapsible-header.open .chevron { transform: rotate(90deg); }
+        .collapsible-body { display: none; margin-top: 0.75rem; }
+        .collapsible-body.open { display: block; }
+
+        .chart-container { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; margin-bottom: 2rem; }
+        .chart-container h2 { font-size: 1.1rem; font-weight: 600; margin-bottom: 0.25rem; }
+        .chart-wrapper { position: relative; height: 420px; }
+
+        .prompt-block { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 1.25rem; font-size: 0.82rem; color: var(--text-muted); line-height: 1.65; white-space: pre-wrap; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0.75rem 0; max-height: 500px; overflow-y: auto; }
+        .prompt-toggle { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 0.5rem 0.9rem; color: var(--accent); cursor: pointer; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 0.4rem; margin: 0.5rem 0; transition: background 0.2s; }
+        .prompt-toggle:hover { background: var(--border); }
+
+        .model-selector { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+        .model-btn { padding: 0.4rem 1rem; border-radius: 20px; border: 1px solid var(--border); background: var(--surface); color: var(--text-muted); cursor: pointer; font-size: 0.85rem; transition: all 0.2s; }
+        .model-btn:hover { border-color: var(--accent); color: var(--text); }
+        .model-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+        .source-link { display: inline-block; color: var(--accent); text-decoration: none; font-size: 0.8rem; margin-top: 0.35rem; margin-right: 0.75rem; }
+        .source-link:hover { text-decoration: underline; }
+        .change-indicator { font-size: 0.8rem; font-weight: 500; margin-left: 0.25rem; }
+        .change-up { color: var(--accent2); } .change-down { color: var(--accent3); } .change-same { color: var(--text-muted); }
+        .section-title { font-size: 1.15rem; font-weight: 600; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem; }
+        .section-title .dot { width: 8px; height: 8px; border-radius: 50%; }
+
+        /* Log group: date-grouped master log */
+        .log-group { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem 1.5rem; margin-bottom: 0.75rem; }
+        .log-group-header { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem; }
+        .log-group-header .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+        .log-group-header h3 { font-size: 0.82rem; font-weight: 500; color: var(--text-muted); }
+        .log-group-header .log-date { font-size: 1.05rem; font-weight: 700; color: var(--text); }
+        .log-sub { display: grid; grid-template-columns: 90px 1fr; gap: 0.5rem 1rem; padding: 0.6rem 0; border-top: 1px solid var(--border); align-items: start; }
+        .log-sub .log-est { font-size: 1.1rem; font-weight: 700; text-align: center; }
+        .log-sub .log-ci { display: block; font-size: 0.68rem; color: var(--text-muted); font-weight: 400; margin-top: 0.1rem; }
+        .log-sub .log-cond { font-size: 0.85rem; font-weight: 600; margin-bottom: 0.15rem; display: flex; align-items: center; gap: 0.4rem; }
+        .log-sub .log-cond-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+        .log-sub .log-reason { font-size: 0.82rem; color: var(--text-muted); line-height: 1.5; }
+
+        /* Condition toggle buttons */
+        .cond-toggles { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-top: 0.35rem; }
+        .cond-btn { display: flex; align-items: center; gap: 0.35rem; padding: 0.3rem 0.75rem; border-radius: 16px; border: 1.5px solid var(--border); background: transparent; color: var(--text-muted); cursor: pointer; font-size: 0.78rem; transition: all 0.2s; }
+        .cond-btn:hover { border-color: var(--text); color: var(--text); }
+        .cond-btn .cond-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+        .cond-btn.active { color: #fff; }
+
+        /* Evidence group separator */
+        .evidence-separator { grid-column: 1 / -1; height: 0; border-top: 1px dashed var(--border); margin: 0.25rem 0; }
+
+        /* Distribution bracket */
+        .dist-group { position: relative; padding-left: 18px; margin-bottom: 0.25rem; }
+        .dist-group::before { content: ''; position: absolute; left: 6px; top: 12px; bottom: 12px; width: 2px; background: var(--border); border-radius: 1px; }
+        .dist-group-label { font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.25rem; padding-left: 18px; }
+
+        /* Distribution histogram */
+        .dist-row { display: flex; align-items: center; gap: 1rem; margin-bottom: 0.5rem; }
+        .dist-label { width: 130px; font-size: 0.82rem; color: var(--text-muted); text-align: right; flex-shrink: 0; }
+        .dist-track { flex: 1; position: relative; height: 48px; background: var(--surface2); border-radius: 8px; border: 1px solid var(--border); overflow: hidden; }
+        .dist-median { position: absolute; width: 2px; height: 100%; top: 0; background: var(--text); opacity: 0.5; z-index: 2; }
+        .dist-stats { width: 180px; font-size: 0.78rem; color: var(--text-muted); flex-shrink: 0; }
+        .dist-axis { flex: 1; position: relative; height: 22px; }
+        .dist-tick { position: absolute; transform: translateX(-50%); font-size: 0.72rem; color: var(--text-muted); top: 2px; }
+
+        /* Evidence selection */
+        .evidence-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin: 0.75rem 0; }
+        .evidence-item { display: flex; align-items: flex-start; gap: 0.5rem; padding: 0.5rem 0.65rem; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; font-size: 0.82rem; color: var(--text-muted); cursor: pointer; transition: border-color 0.2s, border-left-color 0.2s; }
+        .evidence-item:hover { border-color: var(--accent); }
+        .evidence-item input { margin-top: 2px; accent-color: var(--accent); cursor: pointer; flex-shrink: 0; }
+        .evidence-item .ev-title { font-weight: 500; color: var(--text); font-size: 0.82rem; }
+        .evidence-item .ev-meta { font-size: 0.75rem; color: var(--text-muted); }
+        .evidence-item .ev-tag { display: inline-block; font-size: 0.65rem; padding: 0.1rem 0.4rem; border-radius: 8px; margin-left: 0.25rem; font-weight: 500; }
+        .evidence-item[data-tag="system-cards"] { border-left: 3px solid var(--tag-syscards); }
+        .evidence-item[data-tag="consensus"] { border-left: 3px solid var(--tag-consensus); }
+        .evidence-item[data-tag="major-studies"] { border-left: 3px solid var(--tag-studies); }
+        .evidence-item[data-tag="forecasting"] { border-left: 3px solid var(--tag-forecast); }
+        .upload-zone { border: 2px dashed var(--border); border-radius: 10px; padding: 1.25rem; text-align: center; color: var(--text-muted); font-size: 0.85rem; cursor: pointer; transition: border-color 0.2s, background 0.2s; margin-top: 0.75rem; }
+        .upload-zone:hover, .upload-zone.dragover { border-color: var(--accent); background: rgba(108,140,255,0.05); }
+        .upload-zone input { display: none; }
+        .uploaded-files { margin-top: 0.5rem; }
+        .uploaded-file { display: inline-flex; align-items: center; gap: 0.35rem; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; padding: 0.25rem 0.6rem; font-size: 0.78rem; color: var(--text-muted); margin: 0.25rem 0.25rem 0 0; }
+        .uploaded-file .remove { cursor: pointer; color: var(--accent2); font-weight: 700; margin-left: 0.25rem; }
+        .generate-btn { display: block; width: 100%; padding: 0.85rem; margin-top: 1rem; border: none; border-radius: 10px; background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #fff; font-size: 0.95rem; font-weight: 600; cursor: pointer; transition: opacity 0.2s; }
+        .generate-btn:hover { opacity: 0.9; }
+        .generate-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        .generate-status { text-align: center; font-size: 0.82rem; color: var(--text-muted); margin-top: 0.5rem; }
+
+        .preset-toggles { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-bottom: 0.6rem; }
+        .preset-btn { padding: 0.3rem 0.75rem; border-radius: 16px; border: 1px solid var(--border); background: var(--surface2); color: var(--text-muted); cursor: pointer; font-size: 0.78rem; transition: all 0.2s; }
+        .preset-btn:hover { border-color: var(--accent); color: var(--text); }
+        .preset-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+        .preset-btn[data-preset="system-cards"] { border-color: var(--tag-syscards); color: var(--tag-syscards); }
+        .preset-btn[data-preset="system-cards"].active { background: var(--tag-syscards); border-color: var(--tag-syscards); color: #fff; }
+        .preset-btn[data-preset="consensus"] { border-color: var(--tag-consensus); color: var(--tag-consensus); }
+        .preset-btn[data-preset="consensus"].active { background: var(--tag-consensus); border-color: var(--tag-consensus); color: var(--bg); }
+        .preset-btn[data-preset="major-studies"] { border-color: var(--tag-studies); color: var(--tag-studies); }
+        .preset-btn[data-preset="major-studies"].active { background: var(--tag-studies); border-color: var(--tag-studies); color: #fff; }
+        .preset-btn[data-preset="forecasting"] { border-color: var(--tag-forecast); color: var(--tag-forecast); }
+        .preset-btn[data-preset="forecasting"].active { background: var(--tag-forecast); border-color: var(--tag-forecast); color: var(--bg); }
+
+        .fri-tooltip { position: absolute; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 0.85rem 1rem; pointer-events: none; z-index: 50; font-size: 0.82rem; color: var(--text); box-shadow: 0 4px 20px rgba(0,0,0,0.4); max-width: 280px; display: none; }
+        .fri-tooltip h4 { font-size: 0.88rem; margin-bottom: 0.3rem; }
+        .fri-tooltip .fri-val { font-size: 1.2rem; font-weight: 700; margin: 0.25rem 0; }
+        .fri-tooltip .fri-meta { font-size: 0.78rem; color: var(--text-muted); line-height: 1.5; }
+
+        footer { text-align: center; padding-top: 1.5rem; border-top: 1px solid var(--border); color: var(--text-muted); font-size: 0.8rem; }
+        footer a { color: var(--accent); text-decoration: none; } footer a:hover { text-decoration: underline; }
+
+        @media (max-width: 700px) {
+            .chart-wrapper { height: 300px; }
+            .dist-row { flex-wrap: wrap; } .dist-label { width: auto; text-align: left; }
+            .evidence-grid { grid-template-columns: 1fr; }
+            .log-sub { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+
+    <div class="disclaimer-banner">&#9888; Experimental &#8212; Not an Authoritative Risk Assessment</div>
+
+    <header>
+        <h1>What Do LLMs Think About LLM Risk? Biology Edition</h1>
+    </header>
+
+    <!-- Should You Trust These? -->
+    <div class="card">
+        <div class="collapsible-header" onclick="toggleCollapsible(this)">
+            <h2 style="margin-bottom:0">Should You Trust These Forecasts?</h2>
+            <span class="chevron">&#9654;</span>
+        </div>
+        <div class="collapsible-body">
+            <p>The short answer is: <strong style="color:var(--accent2)">no.</strong> But there are reasons this exercise could still be interesting:</p>
+            <ul>
+                <li><strong>LLM forecasting is improving rapidly.</strong> On ForecastBench, frontier LLMs now approach the accuracy of competitive human forecasters (Karger et al., ICLR 2025).</li>
+                <li><strong>Structured, updatable reasoning.</strong> This methodology can be cheaply re-run, creating a longitudinal record.</li>
+                <li><strong>Transparent reasoning chain.</strong> Every update includes explicit reasoning, making the forecast auditable.</li>
+                <li><strong>Complementary signal.</strong> Most useful alongside expert judgement, prediction markets, and quantitative biosecurity models.</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Chart -->
+    <div class="chart-container">
+        <h2>LLM and Human Forecasts of Human-Caused Pandemic Risk Over Time</h2>
+        <div style="display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap; margin-bottom:0.35rem;">
+            <div class="model-selector" id="modelSelector" style="margin:0"></div>
+            <label style="display:flex; align-items:center; gap:0.4rem; cursor:pointer; font-size:0.82rem; color:var(--text-muted);">
+                <input type="checkbox" id="friToggle" checked onchange="showFRI = this.checked; renderChart();" style="accent-color:var(--accent); cursor:pointer;">
+                Human baselines
+            </label>
+        </div>
+        <div class="cond-toggles" id="condToggles" style="margin-bottom:0.75rem;"></div>
+        <div class="chart-wrapper" style="position:relative">
+            <canvas id="forecastChart"></canvas>
+            <div class="fri-tooltip" id="friTooltip"></div>
+        </div>
+    </div>
+
+    <!-- Inter-Run Variance — right under chart -->
+    <div class="card" id="resultsCard">
+        <div class="collapsible-header open" onclick="toggleCollapsible(this)">
+            <h2 style="margin-bottom:0">What Do LLMs Think? Distribution of 10 Independent Estimates</h2>
+            <span class="chevron" style="transform:rotate(90deg)">&#9654;</span>
+        </div>
+        <div class="collapsible-body open">
+            <p>Each condition is generated by 10 independent LLM instances using the ForecastBench zero-shot prompt. No instance sees the others' answers. The histograms below show the full distribution of estimates across runs.</p>
+            <div id="distPlot" style="margin-top:1rem"></div>
+            <button onclick="downloadDistCSV()" style="margin-top:0.75rem; padding:0.4rem 1rem; border-radius:8px; border:1px solid var(--border); background:var(--surface2); color:var(--accent); cursor:pointer; font-size:0.82rem; transition:all 0.2s;">&#11015; Download raw data (CSV)</button>
+        </div>
+    </div>
+
+    <!-- Methodology (collapsed by default) -->
+    <div class="card">
+        <div class="collapsible-header" onclick="toggleCollapsible(this)">
+            <h2 style="margin-bottom:0">Methodology</h2>
+            <span class="chevron">&#9654;</span>
+        </div>
+        <div class="collapsible-body">
+            <h3>The forecasting question</h3>
+            <p>Adapted from the Forecasting Research Institute / GovAI study (Williams, Righetti et al. 2025):</p>
+            <p><em>"What is the annual probability that a human-caused epidemic begins in 2028 that, within a 3-year period, causes more than 100,000 deaths and/or more than $1 trillion in damages?"</em></p>
+            <p style="font-size:0.82rem">Source: <a href="https://forecastingresearch.org/ai-enabled-biorisk" class="source-link" style="margin:0">FRI &#8212; Forecasting Biosecurity Risks from LLMs</a></p>
+
+            <h3>Prior/posterior structure</h3>
+            <p>Each forecast run produces a prior (no specific evidence) and one or more posteriors (after being shown selected documents). Both are generated on the same date &#8212; the x-axis is temporal, showing when each forecast was actually made. This means the timeline grows as forecasts are re-run over time, allowing you to track how LLM estimates evolve.</p>
+
+            <h3>Independent generation</h3>
+            <p>Each condition is generated by 10 independent LLM instances with identical prompts. No instance sees the others' answers. This captures inter-run variance and reveals whether the LLM clusters around attractor values &#8212; a known property of probability estimation with LLMs.</p>
+
+            <h3>Reusable prompt</h3>
+            <p>Mirrors the <a href="https://github.com/forecastingresearch/forecastbench" class="source-link" style="margin:0; font-size:inherit">ForecastBench</a> zero-shot prompt format (Karger et al., ICLR 2025). Stage 1 elicits a prior with no evidence; Stage 2 appends curated documents and asks for an updated estimate.</p>
+            <button class="prompt-toggle" onclick="document.getElementById('promptBlock').style.display = document.getElementById('promptBlock').style.display === 'none' ? 'block' : 'none'">
+                &#9654; Show / hide the reusable prompt
+            </button>
+            <div class="prompt-block" id="promptBlock" style="display:none">===== STAGE 1: PRIOR (zero-shot, no evidence) =====
+
+You are an expert superforecaster, familiar with the work of Tetlock and others. Make a prediction of the probability that the question below will be resolved as true. You MUST give a probability estimate between 0 and 1 UNDER ALL CIRCUMSTANCES. If for some reason you can't answer, pick the base rate, but return a number between 0 and 1.
+
+Question:
+What is the annual probability that a human-caused epidemic begins in 2028 that, within a 3-year period, causes more than 100,000 deaths and/or more than $1 trillion in damages?
+
+Question Background:
+This question was studied by the Forecasting Research Institute (FRI) and GovAI in Williams, Righetti et al. (2025). Their expert panels produced unconditional median estimates of 0.30% (domain experts, n=46) and 0.38% (superforecasters, n=22). "Human-caused" includes deliberate release, accidental release from gain-of-function research, and AI-assisted biological design, but excludes purely natural pandemics.
+
+Resolution Criteria:
+Resolves YES if a human-caused epidemic beginning in calendar year 2028 causes, within a 3-year window, more than 100,000 deaths and/or more than $1 trillion in damages (2024 USD). Resolves NO otherwise.
+
+Today's date: {CURRENT_DATE}
+Question close date: 2031-12-31
+
+Output your answer (a number between 0 and 1) with an asterisk at the beginning and end of the decimal. Do not output anything else.
+
+===== STAGE 2: POSTERIOR (after evidence) =====
+
+[Same prompt as above, with the following appended before the output instruction:]
+
+Evidence Documents:
+You are now provided with {N_DOCUMENTS} curated evidence document(s). These represent a specific evidence lens and may not be comprehensive. Update your estimate based on what these documents contain.
+
+{For each document:}
+--- Document {i}/{N}: {TITLE} ---
+Source: {SOURCE_ORG}, {DATE}
+Type: {system card | consensus report | empirical study | policy analysis}
+{Document text or summary}
+--- End of documents ---
+
+Output your updated answer (a number between 0 and 1) with an asterisk at the beginning and end of the decimal. Do not output anything else.</div>
+        </div>
+    </div>
+
+    <!-- Evidence Selection -->
+    <div class="card">
+        <div class="collapsible-header open" onclick="toggleCollapsible(this)">
+            <h2 style="margin-bottom:0">Generate Your Own Custom LLM Forecast</h2>
+            <span class="chevron" style="transform:rotate(90deg)">&#9654;</span>
+        </div>
+        <div class="collapsible-body open">
+        <p>Select which documents the LLM should consider when generating post-evidence forecasts. The presets cover authoritative consensus documents and recent system cards; you can also upload your own PDFs or text files. If you or your organization work specifically on LLM and biosecurity risk, you may have private resources, internal assessments, or conversation notes that could serve as additional evidence inputs.</p>
+
+        <h3>Preset evidence</h3>
+        <div class="preset-toggles" id="presetToggles">
+            <button class="preset-btn" data-preset="system-cards" onclick="applyPreset('system-cards')">Recent system cards</button>
+            <button class="preset-btn" data-preset="consensus" onclick="applyPreset('consensus')">Consensus evidence</button>
+            <button class="preset-btn" data-preset="major-studies" onclick="applyPreset('major-studies')">Major AI-bio risk studies</button>
+            <button class="preset-btn" data-preset="forecasting" onclick="applyPreset('forecasting')">Forecasting literature</button>
+            <button class="preset-btn" data-preset="all" onclick="applyPreset('all')">All</button>
+            <button class="preset-btn" data-preset="none" onclick="applyPreset('none')">None</button>
+        </div>
+        <div class="evidence-grid" id="evidenceGrid"></div>
+
+        <h3>Upload custom evidence</h3>
+        <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()">
+            <input type="file" id="fileInput" accept=".pdf,.txt,.md,.html" multiple>
+            Drop PDF or TXT files here, or click to browse
+        </div>
+        <div class="uploaded-files" id="uploadedFiles"></div>
+
+        <button class="generate-btn" id="generateBtn" onclick="generateForecasts()">
+            Generate Post-Evidence Forecasts (10 instances)
+        </button>
+        <div class="generate-status" id="generateStatus"></div>
+        </div>
+    </div>
+
+    <!-- Timeline -->
+    <div id="timelineContainer"></div>
+
+    <footer>
+        <p>Built by Luca Righetti (<a href="https://www.governance.ai">GovAI</a>) with Claude (Anthropic) &#183; Question adapted from <a href="https://forecastingresearch.org/ai-enabled-biorisk">FRI / GovAI (Williams, Righetti et al. 2025)</a> &#183; Last updated: February 2026</p>
+    </footer>
+</div>
+
+<script>
+// ============================================================
+//  DATA
+// ============================================================
+
+const FRI_EXPERT_ESTIMATES = {
+    date: "2025-01-22",
+    studyDate: "January 2025",
+    estimates: [
+        { value: 0.30, iqr25: 0.01, iqr75: 2.00, label: "Domain experts", color: "#e2e4ea" },
+        { value: 0.38, iqr25: 0.10, iqr75: 1.21, label: "Superforecasters", color: "#ffb86c" }
+    ]
+};
+let showFRI = true;
+
+// Model entries: Prior, then posteriors for each evidence condition.
+// Dates offset by 1 day each so they separate slightly on the time axis.
+const MODELS = {
+    "claude": {
+        label: "Claude Sonnet 4.5 (Anthropic)",
+        color: "#6c8cff",
+        entries: [
+            {
+                label: "Prior", date: "2026-02-17",
+                estimate: 0.37, p10: 0.20, p90: 0.60,
+                reasoning: "Starting prior for human-caused epidemic in 2028 (>100k deaths / >$1T damages within 3 years). Anchored near FRI expert baselines (domain experts: 0.30%, superforecasters: 0.38%). Estimates range from 0.18% to 0.65%, reflecting tension between historical rarity of human-caused bio events, expanding dual-use capabilities in synthetic biology and AI-assisted design, and the high damage threshold.",
+                reasoningUrl: "reasoning-prior.txt",
+                evidenceUrl: null, evidenceLabel: null
+            },
+            {
+                label: "Post: system cards", date: "2026-02-18",
+                estimate: 0.79, p10: 0.55, p90: 1.12,
+                reasoning: "After reviewing system cards from Claude Opus 4.6, ChatGPT 5.3, and Gemini 3: convergent capability uplift across all major labs. Claude crossed ASL-3 CBRN thresholds; scaffolded agents achieved significant bio-research speedups. ChatGPT 5.3 designated \u2018medium\u2019 bio risk with advancing protein design. Gemini 3 multimodal pathways create novel dual-use vectors. Update constrained by recognition that capability \u2260 deployment \u2260 misuse \u2260 mass-casualty event.",
+                reasoningUrl: "reasoning-syscards.txt",
+                evidenceUrl: null, evidenceLabel: null
+            },
+            {
+                label: "Post: consensus", date: "2026-02-19",
+                estimate: 0.38, p10: 0.33, p90: 0.46,
+                reasoning: "After reviewing 4 consensus documents (Intl AI Safety Report, NAS Biodefense, NAS AI in Life Sciences, UK AISI Frontier Trends): modest upward update. NAS 2025 finds AI provides ~5x uplift for non-experts on experimental protocols. Bengio et al. identify governance gaps. AISI confirms biology capabilities improving but safeguard bypass times also increasing. Narrow confidence interval reflects measured institutional tone.",
+                reasoningUrl: "reasoning-consensus.txt",
+                evidenceUrl: null, evidenceLabel: null
+            },
+            {
+                label: "Post: all evidence", date: "2026-02-20",
+                estimate: 0.80, p10: 0.47, p90: 1.43,
+                reasoning: "After reviewing all 14 evidence documents: system cards provide strongest upward signal (capability uplift). Mouton et al. provides strongest moderating signal (LLMs provide less practical uplift than feared; operational bottlenecks remain). Consensus docs lean slightly upward (5x non-expert uplift, governance gaps). Forecasting literature warns against overconfidence. Wide CI reflects bimodal distribution \u2014 system-card-heavy instances cluster 1.0\u20131.5%, Mouton-heavy instances cluster 0.4\u20130.7%.",
+                reasoningUrl: "reasoning-all.txt",
+                evidenceUrl: null, evidenceLabel: null
+            }
+        ]
+    }
+};
+
+// 10-instance distributions for each condition (generated by independent Claude instances)
+const DISTRIBUTIONS = {
+    "claude_sonnet_4.5": {
+        label: "Claude Sonnet 4.5 (10 independent instances)",
+        conditions: {
+            prior:      { label: "Prior",                 color: "#8b8fa3", medians: [0.32, 0.38, 0.29, 0.65, 0.48, 0.18, 0.42, 0.55, 0.35, 0.24] },
+            consensus:  { label: "Post: consensus",       color: "#6cffa0", medians: [0.38, 0.42, 0.35, 0.45, 0.33, 0.40, 0.37, 0.46, 0.39, 0.36] },
+            syscards:   { label: "Post: system cards",    color: "#6c8cff", medians: [0.85, 0.52, 1.20, 0.65, 0.95, 0.58, 1.10, 0.72, 1.05, 0.61] },
+            all:        { label: "Post: all evidence",    color: "#ffb86c", medians: [1.50, 0.50, 0.80, 1.20, 0.80, 0.40, 1.00, 0.70, 0.60, 0.90] }
+        }
+    }
+};
+
+let userDistribution = null; // Populated when Generate is clicked
+
+// Preset evidence documents
+const PRESET_EVIDENCE = [
+    { id: "opus46", title: "Claude Opus 4.6 System Card", meta: "Anthropic, Feb 2026", url: "https://www-cdn.anthropic.com/0dd865075ad3132672ee0ab40b05a53f14cf5288.pdf", checked: false, tags: ["system-cards"] },
+    { id: "chatgpt53", title: "ChatGPT 5.3 System Card", meta: "OpenAI, Jan 2026", url: "#", checked: false, tags: ["system-cards"] },
+    { id: "gemini3", title: "Gemini 3 System Card", meta: "Google DeepMind, Feb 2026", url: "#", checked: false, tags: ["system-cards"] },
+    { id: "intl_ai_safety", title: "International Scientific Report on the Safety of Advanced AI", meta: "Bengio et al., 2025", url: "https://www.gov.uk/government/publications/international-scientific-report-on-the-safety-of-advanced-ai", checked: false, tags: ["consensus"] },
+    { id: "nas_synbio", title: "Biodefense in the Age of Synthetic Biology", meta: "National Academies, 2018", url: "https://nap.nationalacademies.org/catalog/24890/biodefense-in-the-age-of-synthetic-biology", checked: false, tags: ["consensus"] },
+    { id: "nas_ai_life", title: "The Age of AI in the Life Sciences: Benefits and Biosecurity Considerations", meta: "National Academies, 2025", url: "https://nap.nationalacademies.org/catalog/28868/the-age-of-ai-in-the-life-sciences-benefits-and", checked: false, tags: ["consensus"] },
+    { id: "aisi_trends", title: "Frontier AI Trends Report", meta: "UK AI Security Institute (AISI), Dec 2025", url: "https://www.aisi.gov.uk/frontier-ai-trends-report", checked: false, tags: ["consensus"] },
+    { id: "rand_bio", title: "The Operational Risks of AI in Large-Scale Biological Attacks", meta: "RAND Corporation, 2024", url: "https://www.rand.org/pubs/research_reports/RRA2977-2.html", checked: false, tags: ["major-studies"] },
+    { id: "mouton_reality", title: "The Reality of AI and Biorisk", meta: "Mouton et al., ACM FAccT 2025", url: "https://arxiv.org/abs/2412.01946", checked: false, tags: ["major-studies"] },
+    { id: "securebio_vct", title: "Virology Capabilities Test (VCT): A Multimodal Virology Q&A Benchmark", meta: "SecureBio / CAIS / MIT, Apr 2025", url: "https://arxiv.org/abs/2504.16137", checked: false, tags: ["major-studies"] },
+    { id: "righetti_dualuse", title: "Dual-Use AI Capabilities and the Risk of Bioterrorism", meta: "Righetti, GovAI, 2025", url: "https://www.governance.ai/research-paper/dual-use-ai-capabilities-and-the-risk-of-bioterrorism-converting-capability-evaluations-to-risk-assessments", checked: false, tags: ["major-studies"] },
+    { id: "fri_biorisk", title: "Forecasting LLM-Enabled Biorisk and the Efficacy of Safeguards", meta: "FRI / GovAI (Williams, Righetti et al.), 2025", url: "https://www.governance.ai/research-paper/forecasting-llm-enabled-biorisk-and-the-efficacy-of-safeguards", checked: false, tags: ["forecasting"] },
+    { id: "fri_leap", title: "LEAP: Longitudinal Expert AI Panel (Waves 1\u20134)", meta: "Forecasting Research Institute, 2025", url: "https://leap.forecastingresearch.org/reports", checked: false, tags: ["forecasting"] },
+    { id: "koblentz_peril", title: "Predicting Peril or the Peril of Prediction? Assessing the Risk of CBRN Terrorism", meta: "Koblentz, Terrorism and Political Violence, 2011", url: "https://www.tandfonline.com/doi/abs/10.1080/09546553.2011.575487", checked: false, tags: ["forecasting"] },
+];
+
+const TAG_COLORS = { 'system-cards': '#6c8cff', 'consensus': '#6cffa0', 'major-studies': '#ff6c8c', 'forecasting': '#ffb86c' };
+
+const EVIDENCE_PRESETS = {
+    'system-cards':    { label: 'Recent system cards',    ids: ['opus46', 'chatgpt53', 'gemini3'] },
+    'consensus':       { label: 'Consensus evidence',     ids: ['intl_ai_safety', 'nas_synbio', 'nas_ai_life', 'aisi_trends'] },
+    'major-studies':   { label: 'Major AI-bio risk studies', ids: ['rand_bio', 'mouton_reality', 'securebio_vct', 'righetti_dualuse'] },
+    'forecasting':     { label: 'Forecasting literature',  ids: ['fri_biorisk', 'fri_leap', 'koblentz_peril'] },
+    'all':             { label: 'All',                     ids: PRESET_EVIDENCE.map(e => e.id) },
+    'none':            { label: 'None',                    ids: [] }
+};
+
+let uploadedFiles = [];
+let activePreset = null;
+
+// ============================================================
+//  UTILITY
+// ============================================================
+function toggleCollapsible(el) {
+    el.classList.toggle('open');
+    el.nextElementSibling.classList.toggle('open');
+}
+
+function stats(arr) {
+    const sorted = [...arr].sort((a,b) => a - b);
+    const mean = arr.reduce((s,v) => s+v, 0) / arr.length;
+    const med = sorted.length % 2 ? sorted[Math.floor(sorted.length/2)] : (sorted[sorted.length/2-1]+sorted[sorted.length/2])/2;
+    const std = Math.sqrt(arr.reduce((s,v) => s + (v - mean)**2, 0) / arr.length);
+    return { mean, median: med, std, min: sorted[0], max: sorted[sorted.length-1] };
+}
+
+// ============================================================
+//  CHART: true time-based x-axis
+// ============================================================
+const selectorEl = document.getElementById('modelSelector');
+const modelKeys = Object.keys(MODELS);
+let activeModels = new Set(modelKeys);
+
+function renderSelector() {
+    selectorEl.innerHTML = '';
+    modelKeys.forEach(key => {
+        const btn = document.createElement('button');
+        btn.className = 'model-btn active';
+        btn.textContent = MODELS[key].label;
+        btn.style.borderColor = MODELS[key].color;
+        btn.style.background = MODELS[key].color;
+        selectorEl.appendChild(btn);
+    });
+}
+
+// Condition colors — consistent everywhere
+const COND_COLORS = {
+    'Prior': '#8b8fa3',
+    'Post: system cards': '#6c8cff',
+    'Post: consensus': '#6cffa0',
+    'Post: all evidence': '#ffb86c'
+};
+
+// Condition toggle state — radio-like: only one active at a time, default = Prior
+const COND_LABELS = ['Prior', 'Post: system cards', 'Post: consensus', 'Post: all evidence'];
+const COND_SHORT = { 'Prior': 'Prior', 'Post: system cards': 'System cards', 'Post: consensus': 'Consensus', 'Post: all evidence': 'All evidence' };
+let activeCond = 'Prior';
+
+function renderCondToggles() {
+    const el = document.getElementById('condToggles');
+    el.innerHTML = '';
+    COND_LABELS.forEach(label => {
+        const btn = document.createElement('button');
+        const color = COND_COLORS[label];
+        const isActive = activeCond === label;
+        btn.className = 'cond-btn' + (isActive ? ' active' : '');
+        btn.innerHTML = '<span class="cond-dot" style="background:' + color + '"></span>' + COND_SHORT[label];
+        if (isActive) {
+            btn.style.borderColor = color;
+            btn.style.background = color + '30';
+            btn.style.color = '#fff';
+        } else {
+            btn.style.borderColor = color + '60';
+            btn.style.color = color;
+        }
+        btn.onclick = () => {
+            activeCond = label;
+            renderCondToggles();
+            renderChart();
+        };
+        el.appendChild(btn);
+    });
+}
+
+// FRI plugin: draws diamond markers at the FRI date on time axis
+let friDiamondPositions = [];
+const friPointPlugin = {
+    id: 'friPoints',
+    afterDatasetsDraw(chart) {
+        friDiamondPositions = [];
+        if (!showFRI) return;
+        const { ctx, chartArea, scales: { x, y } } = chart;
+        const friTime = new Date(FRI_EXPERT_ESTIMATES.date + 'T12:00:00').getTime();
+        const xPos = x.getPixelForValue(friTime);
+        if (xPos < chartArea.left - 30 || xPos > chartArea.right + 30) return;
+
+        FRI_EXPERT_ESTIMATES.estimates.forEach((est, i) => {
+            // Keep diamonds close: only ±8px so they look simultaneous
+            const xOff = xPos + (i === 0 ? -8 : 8);
+            const yPos = y.getPixelForValue(est.value);
+            if (yPos < chartArea.top || yPos > chartArea.bottom) return;
+            friDiamondPositions.push({ x: xOff, y: yPos, est: est, index: i });
+            ctx.save();
+            if (est.iqr25 !== undefined) {
+                const y25 = y.getPixelForValue(est.iqr25);
+                const y75 = y.getPixelForValue(est.iqr75);
+                ctx.strokeStyle = est.color + '80';
+                ctx.lineWidth = 2;
+                ctx.beginPath(); ctx.moveTo(xOff, y25); ctx.lineTo(xOff, y75); ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(xOff - 5, y25); ctx.lineTo(xOff + 5, y25);
+                ctx.moveTo(xOff - 5, y75); ctx.lineTo(xOff + 5, y75);
+                ctx.stroke();
+            }
+            ctx.fillStyle = est.color;
+            ctx.beginPath();
+            ctx.moveTo(xOff, yPos - 6); ctx.lineTo(xOff + 6, yPos);
+            ctx.lineTo(xOff, yPos + 6); ctx.lineTo(xOff - 6, yPos);
+            ctx.closePath(); ctx.fill();
+            ctx.strokeStyle = '#0f1117'; ctx.lineWidth = 1.5; ctx.stroke();
+            ctx.fillStyle = est.color + 'cc';
+            ctx.font = '10px -apple-system, sans-serif';
+            ctx.textAlign = 'center';
+            const labelY = i === 0 ? yPos - 14 : yPos + 18;
+            ctx.fillText(est.label + ' (' + est.value.toFixed(1) + '%)', xOff, labelY);
+            ctx.restore();
+        });
+    }
+};
+
+// LLM CI bar plugin — draws vertical confidence bars like FRI diamonds
+const llmCIPlugin = {
+    id: 'llmCI',
+    afterDatasetsDraw(chart) {
+        const { ctx, scales: { y } } = chart;
+        chart.data.datasets.forEach((ds, i) => {
+            if (!ds._entry) return;
+            const meta = chart.getDatasetMeta(i);
+            if (!meta.visible || meta.data.length === 0) return;
+            const e = ds._entry;
+            const pt = meta.data[0];
+            const px = pt.x;
+            const yTop = y.getPixelForValue(e.p90);
+            const yBot = y.getPixelForValue(e.p10);
+            const color = ds.backgroundColor;
+            ctx.save();
+            ctx.strokeStyle = color + '70';
+            ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.moveTo(px, yTop); ctx.lineTo(px, yBot); ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(px - 5, yTop); ctx.lineTo(px + 5, yTop);
+            ctx.moveTo(px - 5, yBot); ctx.lineTo(px + 5, yBot);
+            ctx.stroke();
+            ctx.restore();
+        });
+    }
+};
+
+// FRI tooltip on hover
+const friTooltipEl = document.getElementById('friTooltip');
+document.getElementById('forecastChart').addEventListener('mousemove', function(e) {
+    const rect = this.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+    let hit = null;
+    for (const d of friDiamondPositions) {
+        if (Math.abs(mx - d.x) < 14 && Math.abs(my - d.y) < 14) { hit = d; break; }
+    }
+    if (hit) {
+        const est = hit.est;
+        const nLabel = est.label === 'Domain experts' ? '46 biosecurity &amp; biology specialists' : '22 competitive forecasters';
+        friTooltipEl.innerHTML = '<h4 style="color:' + est.color + '">' + est.label + '</h4>' +
+            '<div class="fri-val" style="color:' + est.color + '">' + est.value.toFixed(2) + '%</div>' +
+            '<div class="fri-meta">' +
+            'IQR: ' + est.iqr25.toFixed(2) + '% \u2013 ' + est.iqr75.toFixed(2) + '%<br>' +
+            'Panel: ' + nLabel + '<br>' +
+            'Source: FRI / GovAI (Williams, Righetti et al. 2025)<br>' +
+            'Date: ' + FRI_EXPERT_ESTIMATES.studyDate +
+            '</div>';
+        let tx = hit.x + 16, ty = hit.y - 40;
+        if (tx + 280 > rect.width) tx = hit.x - 296;
+        if (ty < 0) ty = hit.y + 16;
+        friTooltipEl.style.left = tx + 'px';
+        friTooltipEl.style.top = ty + 'px';
+        friTooltipEl.style.display = 'block';
+    } else {
+        friTooltipEl.style.display = 'none';
+    }
+});
+document.getElementById('forecastChart').addEventListener('mouseleave', function() {
+    friTooltipEl.style.display = 'none';
+});
+
+let chart = null;
+function renderChart() {
+    const ctx = document.getElementById('forecastChart').getContext('2d');
+    if (chart) chart.destroy();
+    const datasets = [];
+    const activeArr = [...activeModels];
+    activeArr.forEach((key, mi) => {
+        const m = MODELS[key];
+        m.entries.filter(e => e.label === activeCond).forEach(e => {
+            const color = COND_COLORS[e.label] || m.color;
+            datasets.push({
+                label: m.label + ' \u2014 ' + e.label,
+                data: [{ x: e.date, y: e.estimate }],
+                _entry: e,
+                _modelLabel: m.label,
+                _condLabel: e.label,
+                backgroundColor: color,
+                borderColor: color,
+                pointRadius: 7,
+                pointHoverRadius: 10,
+                pointBackgroundColor: color,
+                pointBorderColor: '#0f1117',
+                pointBorderWidth: 2,
+                pointStyle: mi === 0 ? 'circle' : 'rectRot',
+                showLine: false,
+            });
+        });
+    });
+    chart = new Chart(ctx, {
+        type: 'scatter', data: { datasets }, plugins: [friPointPlugin, llmCIPlugin],
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            interaction: { mode: 'nearest', intersect: true, axis: 'xy' },
+            scales: {
+                x: {
+                    type: 'time',
+                    time: { unit: 'month', stepSize: 3, displayFormats: { month: 'MMM yyyy' }, tooltipFormat: 'dd MMM yyyy' },
+                    min: '2024-10-01', max: '2026-05-01',
+                    grid: { color: '#2e334515' },
+                    ticks: { color: '#8b8fa3', maxRotation: 0, font: { size: 11 } }
+                },
+                y: { title: { display: true, text: 'P(human-caused epidemic, 2028) %', color: '#8b8fa3', font: { size: 12 } }, grid: { color: '#2e334515' }, ticks: { color: '#8b8fa3', callback: v => v.toFixed(1) + '%' }, min: 0, suggestedMax: 4 }
+            },
+            plugins: {
+                tooltip: {
+                    backgroundColor: '#1a1d27ee', titleColor: '#e2e4ea', bodyColor: '#8b8fa3', borderColor: '#2e3345', borderWidth: 1, padding: 12,
+                    callbacks: {
+                        title: items => items[0]?.dataset._condLabel || '',
+                        label: item => {
+                            const ds = item.dataset;
+                            if (ds._entry) {
+                                const e = ds._entry;
+                                return '  ' + ds._modelLabel + ': ' + e.estimate.toFixed(2) + '% [' + e.p10.toFixed(2) + '\u2013' + e.p90.toFixed(2) + '%]';
+                            }
+                            return '';
+                        }
+                    }
+                },
+                legend: { display: false }
+            }
+        }
+    });
+}
+
+// ============================================================
+//  EVIDENCE SELECTION UI
+// ============================================================
+function renderEvidenceGrid() {
+    const grid = document.getElementById('evidenceGrid');
+    // Group evidence by tag, with separators between groups
+    const groups = [];
+    let lastTag = null;
+    PRESET_EVIDENCE.forEach(ev => {
+        const tag = ev.tags[0] || '';
+        if (lastTag !== null && tag !== lastTag) {
+            groups.push('<div class="evidence-separator"></div>');
+        }
+        lastTag = tag;
+        const tagLabels = { 'system-cards': 'System card', 'consensus': 'Consensus', 'major-studies': 'AI-bio risk study', 'forecasting': 'Forecasting' };
+        const tagLabel = tagLabels[tag] || '';
+        const tagColor = TAG_COLORS[tag] || '';
+        const tagHtml = tagLabel ? `<span class="ev-tag" style="background:${tagColor}22; color:${tagColor}; border:1px solid ${tagColor}44">${tagLabel}</span>` : '';
+        groups.push(`<label class="evidence-item" data-tag="${tag}">
+            <input type="checkbox" data-id="${ev.id}" ${ev.checked ? 'checked' : ''} onchange="syncPresetHighlight()">
+            <div>
+                <div class="ev-title">${ev.title}${tagHtml}</div>
+                <div class="ev-meta">${ev.meta} \u00b7 <a href="${ev.url}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="color:var(--accent)">View</a></div>
+            </div>
+        </label>`);
+    });
+    grid.innerHTML = groups.join('');
+}
+
+function applyPreset(presetKey) {
+    const preset = EVIDENCE_PRESETS[presetKey];
+    if (!preset) return;
+    activePreset = presetKey;
+    document.querySelectorAll('#evidenceGrid input[type="checkbox"]').forEach(cb => {
+        cb.checked = preset.ids.includes(cb.dataset.id);
+    });
+    syncPresetHighlight();
+}
+
+function syncPresetHighlight() {
+    const checked = new Set([...document.querySelectorAll('#evidenceGrid input:checked')].map(cb => cb.dataset.id));
+    document.querySelectorAll('#presetToggles .preset-btn').forEach(btn => {
+        const key = btn.dataset.preset;
+        if (!key) return;
+        const preset = EVIDENCE_PRESETS[key];
+        const isMatch = preset && preset.ids.length === checked.size && preset.ids.every(id => checked.has(id));
+        btn.classList.toggle('active', !!isMatch);
+    });
+}
+
+// File upload
+const uploadZone = document.getElementById('uploadZone');
+const fileInput = document.getElementById('fileInput');
+
+uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('dragover'); });
+uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragover'));
+uploadZone.addEventListener('drop', e => {
+    e.preventDefault(); uploadZone.classList.remove('dragover');
+    handleFiles(e.dataTransfer.files);
+});
+fileInput.addEventListener('change', () => handleFiles(fileInput.files));
+
+function handleFiles(files) {
+    [...files].forEach(f => {
+        if (!uploadedFiles.find(u => u.name === f.name)) {
+            uploadedFiles.push(f);
+        }
+    });
+    renderUploadedFiles();
+}
+
+function removeFile(name) {
+    uploadedFiles = uploadedFiles.filter(f => f.name !== name);
+    renderUploadedFiles();
+}
+
+function renderUploadedFiles() {
+    const el = document.getElementById('uploadedFiles');
+    el.innerHTML = uploadedFiles.map(f =>
+        `<span class="uploaded-file">${f.name} (${(f.size/1024).toFixed(0)}KB)<span class="remove" onclick="removeFile('${f.name.replace(/'/g, "\\'")}')">&times;</span></span>`
+    ).join('');
+}
+
+// ============================================================
+//  GENERATE FORECASTS (stub)
+// ============================================================
+function generateForecasts() {
+    const selected = [...document.querySelectorAll('#evidenceGrid input:checked')].map(cb => cb.dataset.id);
+    const status = document.getElementById('generateStatus');
+
+    if (selected.length === 0 && uploadedFiles.length === 0) {
+        status.innerHTML = '<span style="color:var(--warning)">Select at least one evidence document or upload a file.</span>';
+        return;
+    }
+
+    const evidenceDesc = [
+        ...selected.map(id => PRESET_EVIDENCE.find(e => e.id === id)?.title || id),
+        ...uploadedFiles.map(f => f.name)
+    ].join(', ');
+
+    status.innerHTML = '<span style="color:var(--accent)">\u23f3 To generate forecasts, connect an LLM API backend.<br>Selected evidence: ' + evidenceDesc + '<br><br>This would send 10 parallel API calls with the ForecastBench zero-shot prompt + the selected evidence, then render the distribution below.</span>';
+
+    // Future: read files, send 40 parallel API calls, parse results,
+    // populate userDistribution, re-render distPlot
+}
+
+// ============================================================
+//  DISTRIBUTION HISTOGRAM
+// ============================================================
+function renderDistribution() {
+    const container = document.getElementById('distPlot');
+    const d = DISTRIBUTIONS["claude_sonnet_4.5"];
+    const condKeys = ['prior', 'consensus', 'syscards', 'all'];
+    const allVals = condKeys.flatMap(k => d.conditions[k].medians);
+    if (userDistribution) allVals.push(...userDistribution.medians);
+    const maxVal = Math.max(...allVals) * 1.15;
+    const binCount = 25;
+    const binWidth = maxVal / binCount;
+
+    function histogram(values) {
+        const bins = new Array(binCount).fill(0);
+        values.forEach(v => {
+            const idx = Math.min(Math.floor(v / binWidth), binCount - 1);
+            bins[idx]++;
+        });
+        return bins;
+    }
+
+    function histStrip(label, values, color) {
+        const bins = histogram(values);
+        const maxBin = Math.max(...bins, 1);
+        const s = stats(values);
+        const medPct = (s.median / maxVal) * 100;
+        let barsHtml = '';
+        for (let i = 0; i < binCount; i++) {
+            if (bins[i] === 0) continue;
+            const left = (i / binCount) * 100;
+            const width = (1 / binCount) * 100;
+            const height = (bins[i] / maxBin) * 100;
+            barsHtml += '<div style="position:absolute; left:' + left + '%; width:' + width + '%; bottom:0; height:' + height + '%; background:' + color + '; opacity:0.7; border-radius:2px 2px 0 0;"></div>';
+        }
+        const medLabelHtml = '<div style="position:absolute; left:' + medPct + '%; top:-1px; transform:translateX(-50%); font-size:0.7rem; font-weight:700; color:var(--text); z-index:3; text-shadow:0 0 3px var(--bg), 0 0 6px var(--bg);">' + s.median.toFixed(2) + '%</div>';
+        return '<div class="dist-row">' +
+            '<div class="dist-label">' + label + '</div>' +
+            '<div class="dist-track">' + barsHtml + '<div class="dist-median" style="left:' + medPct + '%"></div>' + medLabelHtml + '</div>' +
+            '<div class="dist-stats">\u03bc=' + s.mean.toFixed(2) + '% \u00b7 med=' + s.median.toFixed(2) + '% \u00b7 \u03c3=' + s.std.toFixed(2) + '</div>' +
+            '</div>';
+    }
+
+    function emptyStrip(label) {
+        return '<div class="dist-row">' +
+            '<div class="dist-label">' + label + '</div>' +
+            '<div class="dist-track" style="display:flex; align-items:center; justify-content:center;"><span style="font-size:0.78rem; color:var(--text-muted); opacity:0.5">Click "Generate" to populate</span></div>' +
+            '<div class="dist-stats" style="opacity:0.4">No data yet</div>' +
+            '</div>';
+    }
+
+    // Axis ticks
+    const tickStep = maxVal > 2 ? 0.5 : 0.2;
+    let axisHtml = '<div class="dist-row" style="margin-bottom:0"><div class="dist-label"></div><div class="dist-axis">';
+    for (let v = 0; v <= maxVal; v += tickStep) {
+        axisHtml += '<span class="dist-tick" style="left:' + ((v / maxVal) * 100) + '%">' + v.toFixed(1) + '%</span>';
+    }
+    axisHtml += '</div><div class="dist-stats"></div></div>';
+
+    let html = '';
+    // Prior stands alone
+    const prior = d.conditions['prior'];
+    html += histStrip(prior.label, prior.medians, prior.color);
+    // Post group with bracket
+    html += '<div class="dist-group-label">Post-evidence</div>';
+    html += '<div class="dist-group">';
+    ['syscards', 'consensus', 'all'].forEach(k => {
+        const c = d.conditions[k];
+        // Shorten label for display (remove "Post: " prefix since bracket provides context)
+        const shortLabel = c.label.replace('Post: ', '');
+        html += histStrip(shortLabel, c.medians, c.color);
+    });
+    if (userDistribution) {
+        html += histStrip('User selection', userDistribution.medians, '#e2e4ea');
+    } else {
+        html += emptyStrip('User selection');
+    }
+    html += '</div>';
+    html += axisHtml;
+    container.innerHTML = html;
+}
+
+// CSV download for distribution data
+function downloadDistCSV() {
+    const rows = [['Agent','Model','Condition','Date','Median_pct','P10_pct','P90_pct']];
+    // Add per-model summary data
+    Object.keys(MODELS).forEach(key => {
+        const m = MODELS[key];
+        m.entries.forEach(e => {
+            rows.push(['Summary', m.label, e.label, e.date, e.estimate, e.p10, e.p90]);
+        });
+    });
+    // Add individual instance data from distributions
+    Object.keys(DISTRIBUTIONS).forEach(modelKey => {
+        const d = DISTRIBUTIONS[modelKey];
+        Object.keys(d.conditions).forEach(condKey => {
+            const c = d.conditions[condKey];
+            c.medians.forEach((med, i) => {
+                rows.push(['Instance_' + (i+1), d.label, c.label, '2026-02-17', med, '', '']);
+            });
+        });
+    });
+    const csv = rows.map(r => r.join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'pandemic-risk-forecast-data.csv';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+// ============================================================
+//  TIMELINE
+// ============================================================
+function renderTimeline() {
+    const container = document.getElementById('timelineContainer');
+    let html = '';
+    [...activeModels].forEach(key => {
+        const m = MODELS[key];
+        // Group entries by generation date (all entries share same real date: Feb 17, 2026)
+        const genDate = new Date(m.entries[0].date + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+        html += '<div class="card" style="padding:1rem 1.5rem">' +
+            '<div class="collapsible-header" onclick="toggleCollapsible(this)">' +
+                '<div class="section-title" style="margin:0"><div class="dot" style="background:' + m.color + '"></div>' + m.label + ' \u2014 Forecast Log</div>' +
+                '<span class="chevron">\u25b6</span>' +
+            '</div>' +
+            '<div class="collapsible-body">';
+        // Single date-grouped block
+        html += '<div class="log-group">' +
+            '<div class="log-group-header"><span class="log-date">' + genDate + '</span><div class="dot" style="background:' + m.color + '"></div><h3>' + m.label + '</h3></div>';
+        m.entries.forEach((e, i) => {
+            const color = COND_COLORS[e.label] || m.color;
+            const prev = i > 0 ? m.entries[0].estimate : null;
+            let changeHtml = '';
+            if (prev !== null) {
+                const diff = e.estimate - prev;
+                if (Math.abs(diff) > 0.001) {
+                    if (diff > 0) changeHtml = ' <span class="change-indicator change-up">+' + diff.toFixed(2) + 'pp</span>';
+                    else changeHtml = ' <span class="change-indicator change-down">' + diff.toFixed(2) + 'pp</span>';
+                }
+            }
+            const reasonHtml = e.reasoningUrl ? ' <a class="source-link" href="' + e.reasoningUrl + '" target="_blank" rel="noopener" style="margin:0; font-size:0.78rem">\ud83d\udcad Reasoning</a>' : '';
+            html += '<div class="log-sub">' +
+                '<div class="log-est" style="color:' + color + '">' + e.estimate.toFixed(2) + '%<span class="log-ci">80% CI: ' + e.p10.toFixed(2) + '\u2013' + e.p90.toFixed(2) + '%</span></div>' +
+                '<div><div class="log-cond"><span class="log-cond-dot" style="background:' + color + '"></span>' + e.label + changeHtml + '</div>' +
+                '<div class="log-reason">' + e.reasoning + '</div>' + reasonHtml + '</div>' +
+            '</div>';
+        });
+        html += '</div></div></div>';
+    });
+    container.innerHTML = html;
+}
+
+// ============================================================
+//  INIT
+// ============================================================
+renderSelector();
+renderCondToggles();
+renderChart();
+renderEvidenceGrid();
+syncPresetHighlight();
+renderDistribution();
+renderTimeline();
+</script>
+</body>
+</html>
